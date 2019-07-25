@@ -30,7 +30,7 @@ class FlexicaptureClient {
 
   // generic
 
-  async call(methodName: string, params: any) {
+  async call(methodName: string, params: any = {}) {
     const { data } = await this._axios.post(null, {
       MethodName: methodName,
       Params: params
@@ -62,6 +62,17 @@ class FlexicaptureClient {
   }
 
   // Projects
+  async GetProjects() {
+    const { projects } = await this.call("GetProjects");
+
+    return projects;
+  }
+
+  async OpenProject(params: { sessionId: number, projectNameOrGuid: string }) {
+    const { projectId } = await this.call("OpenProject", params);
+
+    return projectId;
+  }
 }
 
 export default FlexicaptureClient;

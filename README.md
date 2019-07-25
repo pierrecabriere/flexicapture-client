@@ -62,3 +62,21 @@ const sessionId = await client.OpenSession({ roleType: 1, stationType: 1 });
 
 console.log(sessionId);
 ```
+
+### Projects
+
+#### GetProjects
+
+```javascript
+const projects = await client.GetProjects();
+
+console.log(projects.length);
+```
+
+#### OpenProject
+
+```javascript
+const projectId = await client.OpenProject({ sessionId: id, projectNameOrGuid: "project-name" });
+
+console.log(projectId);
+```

@@ -1,4 +1,4 @@
-# flexicapture-client [WIP]
+# flexicapture-client [WIP] 🛠
 
 ## Minimal configuration
 

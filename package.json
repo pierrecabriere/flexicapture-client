@@ -4,8 +4,8 @@
   "description": "",
   "main": "dist/index.js",
   "scripts": {
-    "example": "ts-node example.ts",
-    "example:watch": "nodemon example.ts",
+    "example": "node dist/example.js",
+    "example:watch": "nodemon src/example.ts",
     "build": "tsc"
   },
   "author": "",

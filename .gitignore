@@ -6,6 +6,7 @@ yarn.lock
 # testing
 /coverage
 example.*
+sample.pdf
 
 # misc
 .DS_Store

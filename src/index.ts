@@ -1,4 +1,7 @@
 import axios from "axios";
+import Batch from "./models/Batch";
+import Document from "./models/Document";
+import File from "./models/File";
 
 interface IClientConfig {
   host: string,
@@ -15,6 +18,14 @@ const defaultConfig: IClientConfig = {
 class FlexicaptureClient {
   private _axios;
   private _config;
+
+  // models
+
+  static Batch = Batch;
+  static Document = Document;
+  static File = File;
+
+  // constructor
 
   constructor(config: IClientConfig) {
     this._config = Object.assign({}, defaultConfig, config);
@@ -38,41 +49,7 @@ class FlexicaptureClient {
 
     return data;
   }
-
-  // Sessions
-
-  async CloseSession(params: { sessionId: number }) {
-    return await this.call("CloseSession", params);
-  }
-
-  async GetSessionInfo(params: { sessionId: number, userName: string, computerName: string, roleType: number }) {
-    return await this.call("GetSessionInfo", params);
-  }
-
-  async IsSessionExists(params: { sessionId: number }) {
-    const { result } = await this.call("IsSessionExists", params);
-
-    return result;
-  }
-
-  async OpenSession(params: { roleType: number, stationType: number }) {
-    const { sessionId } = await this.call("OpenSession", params);
-
-    return sessionId;
-  }
-
-  // Projects
-  async GetProjects() {
-    const { projects } = await this.call("GetProjects");
-
-    return projects;
-  }
-
-  async OpenProject(params: { sessionId: number, projectNameOrGuid: string }) {
-    const { projectId } = await this.call("OpenProject", params);
-
-    return projectId;
-  }
 }
 
 export default FlexicaptureClient;
+export { FlexicaptureClient, Batch, Document, File };

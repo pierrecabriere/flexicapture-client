@@ -23,6 +23,7 @@ Flexicapture-client peut être installé sur n'importe quelle machine qui peut s
 
 Le seul prérequis pour exécuter ce script est d'avoir nodejs installé sur la machine.<br/>
 Les dépendances du script doivent être installées, avant de l'exécuter vérifiez que le dossier **node_modules** est bien présent dans le dossier du script.
+Si ce n'est pas le cas, vous devez recompiler le script avec la commande `npm install` à lancer depuis le dossier du script.
 
 ### Exécution
 

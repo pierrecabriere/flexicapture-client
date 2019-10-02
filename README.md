@@ -22,6 +22,8 @@ Flexicapture-client peut être installé sur n'importe quelle machine qui peut s
 ### Prérequis
 
 Le seul prérequis pour exécuter ce script est d'avoir nodejs installé sur la machine.<br/>
+Pour vérifier si nodejs est installé, exécutez la commande `node -v`.<br/>
+Pour l'installer, rendez-vous sur [https://nodejs.org](https://nodejs.org).<br/>
 Les dépendances du script doivent être installées, avant de l'exécuter vérifiez que le dossier **node_modules** est bien présent dans le dossier du script.
 Si ce n'est pas le cas, vous devez les installer avec la commande `npm install` à lancer depuis le dossier du script.
 

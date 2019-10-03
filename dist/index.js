@@ -29,7 +29,8 @@ function main() {
                 Name: space.attributes.title,
                 ProjectId: projectId,
                 Properties: [
-                    { Name: "kyc_id", Value: space.id },
+                    { Name: "kyc_id_folder", Value: spaceId },
+                    { Name: "kyc_id_subfolder", Value: spaceId },
                     { Name: "kyc_type", Value: type }
                 ]
             });
@@ -77,12 +78,20 @@ function main() {
             }
         });
         const fayeClient = new faye_1.default.Client(`${process.env.PAW_HOST}/faye`);
-        fayeClient.subscribe('/logs/users', ({ code, id }) => __awaiter(this, void 0, void 0, function* () {
+        fayeClient.on('transport:up', function () {
+            console.log("waiting for new space to process ...");
+        });
+        fayeClient.subscribe('/logs/users', ({ code, log_id }) => __awaiter(this, void 0, void 0, function* () {
+            console.log(code);
             if (code !== "flexicapture") {
                 return;
             }
             yield pawClient.login();
-            const { data: { attributes: { space_id: parent_id } } } = yield pawClient.execute(`/api/d2/logs/${id}`, "get");
+            const { data: { attributes: { action: parent_id } } } = yield pawClient.execute(`/api/d2/logs/${log_id}`, "get");
+            if (!parent_id) {
+                console.log("space_id not found in action");
+                return;
+            }
             console.log(`start space ${parent_id}`);
             const { userIdentity } = yield flexicaptureClient.call("GetCurrentUserIdentity");
             const { userId } = yield flexicaptureClient.call("FindUser", { userLogin: userIdentity.Name });
@@ -100,10 +109,9 @@ function main() {
             }), Promise.resolve());
             yield flexicaptureClient.call("CloseProject", { sessionId, projectId });
             yield flexicaptureClient.call("CloseSession", { sessionId });
-            console.log(`end space ${id}`);
+            console.log(`end space ${parent_id}`);
             console.log("waiting for new space to process ...");
         }));
-        console.log("waiting for new space to process ...");
     });
 }
 main();

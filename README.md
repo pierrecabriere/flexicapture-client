@@ -40,5 +40,7 @@ Vous pouvez également lancer la commande en tache de fond en rajoutant le signe
 Les dossiers plugandwork sont envoyés au serveur flexicapture via des Batchs.<br/>
 Chaque document du dossier envoyé est représenté par un Batch avec les propriétés suivantes :<br/>
 
-`kyc_id` l'identifiant du document plugandwork. La modification des métas effectuée par flexicapture devra être appliquée à cet identifiant.<br/>
+`kyc_id_subfolder` l'identifiant du document plugandwork. La modification des métas effectuée par flexicapture devra être appliquée à cet identifiant.<br/>
+`kyc_id_folder` l'identifiant du dossier plugandwork.<br/>
 `kyc_type` le type de document à traiter côté flexicapture. Ce type représente une famille plugandwork.<br/>
+`kyc_poject` le type de projet (metadata type sur le dosssier plugandwork).<br/>

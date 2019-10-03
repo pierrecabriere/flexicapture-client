@@ -7,6 +7,7 @@ import FlexicaptureClient from "./client";
 async function main() {
   const _processSpace = async (projectId, sessionId, userId, parentId, spaceId) => {
     console.log(`process item ${ spaceId }`);
+    const { data: parentSpace } = await pawClient.execute(`/api/d2/spaces/${ parentId }`, "get");
     const { data: space } = await pawClient.execute(`/api/d2/spaces/${ spaceId }`, "get");
 
     let type;
@@ -19,8 +20,10 @@ async function main() {
       Name: space.attributes.title,
       ProjectId: projectId,
       Properties: [
-        { Name: "kyc_id", Value: space.id },
-        { Name: "kyc_type", Value: type }
+        { Name: "kyc_id_subfolder", Value: spaceId },
+        { Name: "kyc_id_folder", Value: parentId },
+        { Name: "kyc_type", Value: type },
+        { Name: "kyc_poject", Value: parentSpace.superfields.type },
       ]
     });
     const { batchId } = await flexicaptureClient.call("AddNewBatch", { sessionId, projectId, batch, ownerId: userId });
@@ -73,7 +76,6 @@ async function main() {
     console.log("waiting for new space to process ...");
   });
   fayeClient.subscribe('/logs/users', async ({ code, log_id }) => {
-    console.log(code);
     if (code !== "flexicapture") {
       return;
     }

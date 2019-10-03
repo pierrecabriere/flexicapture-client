@@ -14,6 +14,7 @@ Les champs suivants sont configurables :<br/>
 `PAW_HOST` l'adresse du serveur plugandwork sur lequel l'API est accessible.<br/>
 `PAW_USERNAME` l'identifiant de connexion à L'API plugandwork.<br/>
 `PAW_PASSWORD` le mot de passe de connexion à L'API plugandwork.<br/>
+`NODE_TLS_REJECT_UNAUTHORIZED` la manière dont le script gèe les certiticats. La valeur 0 permet de ne pas tenir compte des erreurs de certificat<br/>
 
 ## Installation
 
@@ -40,4 +41,4 @@ Les dossiers plugandwork sont envoyés au serveur flexicapture via des Batchs.<b
 Chaque document du dossier envoyé est représenté par un Batch avec les propriétés suivantes :<br/>
 
 `kyc_id` l'identifiant du document plugandwork. La modification des métas effectuée par flexicapture devra être appliquée à cet identifiant.<br/>
-`kyc_type` le type de document à traiter côté flexicapture. Ce type représente une famille plugandwor.<br/>
+`kyc_type` le type de document à traiter côté flexicapture. Ce type représente une famille plugandwork.<br/>

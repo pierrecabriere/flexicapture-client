@@ -69,7 +69,11 @@ async function main() {
   });
 
   const fayeClient = new Faye.Client(`${ process.env.PAW_HOST }/faye`);
+  fayeClient.on('transport:up', function() {
+    console.log("waiting for new space to process ...");
+  });
   fayeClient.subscribe('/logs/users', async ({ code, log_id }) => {
+    console.log(code);
     if (code !== "flexicapture") {
       return;
     }
@@ -109,8 +113,6 @@ async function main() {
 
     console.log("waiting for new space to process ...");
   });
-
-  console.log("waiting for new space to process ...");
 }
 
 main();

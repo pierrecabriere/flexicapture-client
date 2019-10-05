@@ -14,7 +14,7 @@ interface IDocument {
   ErrorText?: string, // string	A description of the document processing errors
   ExternalId?: string, // string	The external ID of the document
   Properties?: any[], // RegistrationProperty[]	The set of registration parameters for the document
-  Priority?: any[], // Priority[]	Document priority
+  Priority?: number, // Priority	Document priority
   FileVersion?: number, // int	The version of the document file on the server
   OwnerId?: number, // int	The ID of the user or group who owns the project
   StageExternalId?: number, // int	The ID of the processing stage in which the task was created (unique within the batch type)
@@ -26,6 +26,7 @@ interface IDocument {
   HasWarnings?: boolean, // bool	A flag that shows whether there are any validation rule warnings
   HasAssemblingErrors?: boolean, // bool	A flag that shows whether there were assembling errors
   HasAttachments?: boolean, // bool	A flag that shows whether the document has attachments
+  Flags?: number
 }
 
 class Document implements IDocument {
@@ -44,7 +45,7 @@ class Document implements IDocument {
   ErrorText =  "";
   ExternalId =  "";
   Properties =  [];
-  Priority =  [];
+  Priority =  0;
   FileVersion =  0;
   OwnerId =  0;
   StageExternalId =  0;
@@ -56,6 +57,7 @@ class Document implements IDocument {
   HasWarnings =  false;
   HasAssemblingErrors =  false;
   HasAttachments =  false;
+  Flags =  0;
 
   constructor(params: IDocument) {
     Object.assign(this, params);

@@ -8,8 +8,7 @@ async function main() {
   /*
   Fonction de traitement d'un sous-espace de travail plugandwork (document flexicapture)
   */
-  const _processDocument = async (sessionId, batchId, spaceId) =>
-  {
+  const _processDocument = async (sessionId, batchId, spaceId) => {
     // On récupère les informations sur le document
     const { data: space } = await pawClient.execute(`/api/d2/spaces/${ spaceId }`, "get");
     console.log(`process paw document ${ space.id }`);
@@ -44,9 +43,9 @@ async function main() {
         try {
           // On ajoute le document à flexiapture
           // /!\ Le paramètre excludeFromAutomaticAssembling est nécessaire au bon enregistrement des propriétés du document sur flexicapture
-          await flexicaptureClient.call("AddNewDocument", { sessionId, file, document: flexicaptureDocument, excludeFromAutomaticAssembling: true });
+          await flexicaptureClient.call("AddNewDocument", { sessionId, file, document: flexicaptureDocument, previousItemId: 0, excludeFromAutomaticAssembling: true });
         } catch (e) {
-          console.log(e.message);
+          console.log(e.response.data);
         }
         console.log(`added new image (flexicapture document) on batch ${ batchId }`);
       }));
@@ -61,7 +60,28 @@ async function main() {
   Fonction de traitement d'un espace de travail plugandwork (dossier flexicapture).
   */
   const _processSpace = async spaceId => {
-    console.log(`start space ${ spaceId }`);
+
+    // on récupère les informations sur l'espace
+    const { data: space } = await pawClient.execute(`/api/d2/spaces/${ spaceId }`, "get");
+    // on vérifie si l'espace a déjà été traité par ce script,
+    // si c'est le cas, on stoppe l'exécution de cet espace
+    if (space.attributes.superfields.flexicaptureProcessed) {
+      console.log("the script already processed this document");
+      return;
+    } else {
+      // Sinon, on patch l'espace pour indiquer qu'il a déjà été traité
+      await pawClient.execute(`/api/d2/spaces/${ spaceId }`, "patch", {}, {
+        data: { attributes: { superfields: { ...space.attributes.superfields, flexicaptureProcessed: true } } }
+      });
+    }
+    // si cet espace n'a pas de sous-espaces (correspondants aux documents flexicapture),
+    // on stoppe l'exécution de la fonction
+    if (!space || !space.attributes || !space.attributes.space_ids) {
+      console.log("no documents found");
+      return;
+    }
+
+    console.log(`start space ${ space.id }`);
 
     // On se connecte à flexicapture pour récupérer une session et ouvrir le projet configuré dans le .env
     const { userIdentity } = await flexicaptureClient.call("GetCurrentUserIdentity");
@@ -73,14 +93,7 @@ async function main() {
     });
     console.log(`project ${ projectId } opened`);
 
-    // on récupère les informations sur l'espace
-    const { data: space } = await pawClient.execute(`/api/d2/spaces/${ spaceId }`, "get");
-    // si cet espace n'a pas de sous-espaces (correspondants aux documents flexicapture),
-    // on stoppe l'exécution de la fonction
-    if (!space || !space.attributes || !space.attributes.space_ids) {
-      console.log("no documents found");
-      return;
-    }
+    let type = space && space.attributes && space.attributes.superfields && space.attributes.superfields.type || "";
 
     // On créé un nouveau batch avec les propriétés nécessaires au traitement du dossier
     const batch = new FlexicaptureClient.Batch({
@@ -88,7 +101,7 @@ async function main() {
       ProjectId: projectId,
       Properties: [
         { Name: "kyc_id", Value: spaceId },
-        { Name: "kyc_tpe", Value: space && space.attributes && space.attributes.superfields && space.attributes.superfields.type }
+        { Name: "kyc_tpe", Value: type }
       ]
     });
 

@@ -17,7 +17,7 @@ class Document {
         this.ErrorText = "";
         this.ExternalId = "";
         this.Properties = [];
-        this.Priority = [];
+        this.Priority = 0;
         this.FileVersion = 0;
         this.OwnerId = 0;
         this.StageExternalId = 0;
@@ -29,6 +29,7 @@ class Document {
         this.HasWarnings = false;
         this.HasAssemblingErrors = false;
         this.HasAttachments = false;
+        this.Flags = 0;
         Object.assign(this, params);
     }
 }

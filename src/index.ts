@@ -5,6 +5,9 @@ import PawClient from "paw-client";
 import FlexicaptureClient from "./client";
 
 async function main() {
+  // liste des espaces tratés (cache)
+  const processed = [];
+
   /*
   Fonction de traitement d'un sous-espace de travail plugandwork (document flexicapture)
   */
@@ -65,10 +68,11 @@ async function main() {
     const { data: space } = await pawClient.execute(`/api/d2/spaces/${ spaceId }`, "get");
     // on vérifie si l'espace a déjà été traité par ce script,
     // si c'est le cas, on stoppe l'exécution de cet espace
-    if (space.attributes.superfields.flexicaptureProcessed) {
+    if (processed.includes(space.id) || space.attributes.superfields.flexicaptureProcessed) {
       console.log("the script already processed this document");
       return;
     } else {
+      processed.push(space.id);
       // Sinon, on patch l'espace pour indiquer qu'il a déjà été traité
       await pawClient.execute(`/api/d2/spaces/${ spaceId }`, "patch", {}, {
         data: { attributes: { superfields: { ...space.attributes.superfields, flexicaptureProcessed: true } } }

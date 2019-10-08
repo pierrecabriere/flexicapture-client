@@ -4,6 +4,11 @@ import Faye from "faye";
 import PawClient from "paw-client";
 import FlexicaptureClient from "./client";
 
+const projectsMapping = {
+  "kyc_als_hestia_sub1_beneficiaire": "56c35116-0b93-4a87-8e51-19d28c9cbdba",
+  "kyc_mj": "48968721-755e-4125-8564-b8f267ae14c5"
+};
+
 async function main() {
   // liste des espaces tratés (cache)
   const processed = [];
@@ -87,17 +92,19 @@ async function main() {
 
     console.log(`start space ${ space.id }`);
 
+    let type = space && space.attributes && space.attributes.superfields && space.attributes.superfields.type || "";
+
+    const projectGuid = projectsMapping[type] || process.env.FLEXICAPTURE_PROJECT_GUID;
+
     // On se connecte à flexicapture pour récupérer une session et ouvrir le projet configuré dans le .env
     const { userIdentity } = await flexicaptureClient.call("GetCurrentUserIdentity");
     const { userId } = await flexicaptureClient.call("FindUser", { userLogin: userIdentity.Name });
     const { sessionId } = await flexicaptureClient.call("OpenSession", { roleType: 1, stationType: 1 });
     const { projectId } = await flexicaptureClient.call("OpenProject", {
       sessionId,
-      projectNameOrGuid: process.env.FLEXICAPTURE_PROJECT_GUID
+      projectNameOrGuid: projectGuid
     });
     console.log(`project ${ projectId } opened`);
-
-    let type = space && space.attributes && space.attributes.superfields && space.attributes.superfields.type || "";
 
     // On créé un nouveau batch avec les propriétés nécessaires au traitement du dossier
     const batch = new FlexicaptureClient.Batch({

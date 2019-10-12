@@ -15,6 +15,10 @@ require('dotenv').config();
 const faye_1 = __importDefault(require("faye"));
 const paw_client_1 = __importDefault(require("paw-client"));
 const client_1 = __importDefault(require("./client"));
+const projectsMapping = {
+    "kyc_als_hestia_sub1_beneficiaire": "56c35116-0b93-4a87-8e51-19d28c9cbdba",
+    "kyc_mj": "48968721-755e-4125-8564-b8f267ae14c5"
+};
 function main() {
     return __awaiter(this, void 0, void 0, function* () {
         // liste des espaces tratés (cache)
@@ -45,6 +49,9 @@ function main() {
             const documents = yield pawClient.getDocs({ space_ids: [space.id] });
             // Pour chaque document
             yield Promise.all(documents.map((doc) => __awaiter(this, void 0, void 0, function* () {
+                // On ajoute le document à flexiapture
+                // /!\ Le paramètre excludeFromAutomaticAssembling est nécessaire au bon enregistrement des propriétés du document sur flexicapture
+                const { documentId } = yield flexicaptureClient.call("AddNewDocument", { sessionId, document: flexicaptureDocument, previousItemId: 0, excludeFromAutomaticAssembling: true });
                 // Pour chaque page de ce document
                 yield Promise.all(doc.attributes.pages_urls.map((page_url, index) => __awaiter(this, void 0, void 0, function* () {
                     // On récupère le contenu de la page que l'on enregistre dans un buffer
@@ -53,14 +60,12 @@ function main() {
                     // @ts-ignore - On créé un nouveau fichier flexicapture avec le buffer créé précédemment
                     const file = new client_1.default.File({ Name: `${doc.id}_page${index + 1}`, Bytes: buffer });
                     try {
-                        // On ajoute le document à flexiapture
-                        // /!\ Le paramètre excludeFromAutomaticAssembling est nécessaire au bon enregistrement des propriétés du document sur flexicapture
-                        yield flexicaptureClient.call("AddNewDocument", { sessionId, file, document: flexicaptureDocument, previousItemId: 0, excludeFromAutomaticAssembling: true });
+                        yield flexicaptureClient.call("AddNewPage", { sessionId, batchId, documentId, file });
                     }
                     catch (e) {
                         console.log(e.response.data);
                     }
-                    console.log(`added new image (flexicapture document) on batch ${batchId}`);
+                    console.log(`added new image on batch ${batchId}`);
                 })));
             })));
             // Le document a été traité
@@ -93,16 +98,17 @@ function main() {
                 return;
             }
             console.log(`start space ${space.id}`);
+            let type = space && space.attributes && space.attributes.superfields && space.attributes.superfields.type || "";
+            const projectGuid = projectsMapping[type] || process.env.FLEXICAPTURE_PROJECT_GUID;
             // On se connecte à flexicapture pour récupérer une session et ouvrir le projet configuré dans le .env
             const { userIdentity } = yield flexicaptureClient.call("GetCurrentUserIdentity");
             const { userId } = yield flexicaptureClient.call("FindUser", { userLogin: userIdentity.Name });
             const { sessionId } = yield flexicaptureClient.call("OpenSession", { roleType: 1, stationType: 1 });
             const { projectId } = yield flexicaptureClient.call("OpenProject", {
                 sessionId,
-                projectNameOrGuid: process.env.FLEXICAPTURE_PROJECT_GUID
+                projectNameOrGuid: projectGuid
             });
             console.log(`project ${projectId} opened`);
-            let type = space && space.attributes && space.attributes.superfields && space.attributes.superfields.type || "";
             // On créé un nouveau batch avec les propriétés nécessaires au traitement du dossier
             const batch = new client_1.default.Batch({
                 Name: space && space.attributes && space.attributes.title,

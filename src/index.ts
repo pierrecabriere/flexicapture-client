@@ -41,6 +41,10 @@ async function main() {
     const documents = await pawClient.getDocs({ space_ids: [space.id] });
     // Pour chaque document
     await Promise.all(documents.map(async doc => {
+      // On ajoute le document à flexiapture
+      // /!\ Le paramètre excludeFromAutomaticAssembling est nécessaire au bon enregistrement des propriétés du document sur flexicapture
+      const { documentId } = await flexicaptureClient.call("AddNewDocument", { sessionId, document: flexicaptureDocument, previousItemId: 0, excludeFromAutomaticAssembling: true });
+
       // Pour chaque page de ce document
       await Promise.all(doc.attributes.pages_urls.map(async (page_url, index) => {
         // On récupère le contenu de la page que l'on enregistre dans un buffer
@@ -49,13 +53,11 @@ async function main() {
         // @ts-ignore - On créé un nouveau fichier flexicapture avec le buffer créé précédemment
         const file = new FlexicaptureClient.File({ Name: `${ doc.id }_page${ index + 1 }`, Bytes: buffer });
         try {
-          // On ajoute le document à flexiapture
-          // /!\ Le paramètre excludeFromAutomaticAssembling est nécessaire au bon enregistrement des propriétés du document sur flexicapture
-          await flexicaptureClient.call("AddNewDocument", { sessionId, file, document: flexicaptureDocument, previousItemId: 0, excludeFromAutomaticAssembling: true });
+          await flexicaptureClient.call("AddNewPage", { sessionId, batchId, documentId, file });
         } catch (e) {
           console.log(e.response.data);
         }
-        console.log(`added new image (flexicapture document) on batch ${ batchId }`);
+        console.log(`added new image on batch ${ batchId }`);
       }));
     }));
 

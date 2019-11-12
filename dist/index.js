@@ -39,8 +39,8 @@ function main() {
             // On récupères les douments PaW de ce sous-espace (chaque document PaW correspondant
             // à un pièce flexicapture)
             const documents = yield pawClient.getDocs({ space_ids: [space.id] });
-            if (!documents.length || !documents.filter(doc => doc.attributes.file_url).length) {
-                console.log(`this document is empty`);
+            if (!documents.length || !documents.filter(doc => doc.attributes.file_url && doc.attributes.preview_url).length) {
+                console.log(`this document is not valid`);
                 yield pawClient.execute(`/api/d2/spaces/${spaceId}`, "patch", { config: { timeout: 0 } }, {
                     data: { attributes: { superfields: Object.assign({}, space.attributes.superfields, { flexicapture: "pieces_non_conformes" }) } }
                 });
@@ -145,10 +145,12 @@ function main() {
             }
             console.log(`batch ${batchId} opened`);
             console.log(`${space.attributes.space_ids.length} paw document found`);
+            let spaceProcessed = false;
             // Pour chaque sous-espace de cet espace (c.a.d chaque document du dossier courant)
             yield Promise.all(space.attributes.space_ids.map((space_id) => __awaiter(this, void 0, void 0, function* () {
                 try {
                     yield _processDocument(sessionId, batchId, space_id);
+                    spaceProcessed = true;
                 }
                 catch (e) {
                     console.log(`error processing document ${space_id}`, e);

@@ -31,7 +31,7 @@ async function main() {
     // à un pièce flexicapture)
     const documents = await pawClient.getDocs({ space_ids: [space.id] });
 
-    if (!documents.length || !documents.filter(doc => doc.attributes.file_url && doc.attributes.preview_url).length) {
+    if (!documents.length || !documents.filter(doc => doc.attributes.file_url && doc.attributes.content_type.includes("image")).length) {
       console.log(`this document is not valid`);
 
       await pawClient.execute(`/api/d2/spaces/${ spaceId }`, "patch", { config: { timeout: 0 } }, {

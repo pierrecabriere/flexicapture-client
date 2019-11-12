@@ -28,13 +28,23 @@ function main() {
         */
         const _processDocument = (sessionId, batchId, spaceId) => __awaiter(this, void 0, void 0, function* () {
             // On récupère les informations sur le document
-            const { data: space } = yield pawClient.execute(`/api/d2/spaces/${spaceId}`, "get");
+            const { data: space } = yield pawClient.execute(`/api/d2/spaces/${spaceId}`, "get", { config: { timeout: 0 } });
             console.log(`process paw document ${space.id}`);
             let type;
             if (space && space.attributes && space.attributes.family_id) {
                 // On récupère le type de document (stocké dans la famille de celui-ci)
-                const { data: family } = yield pawClient.execute(`/api/d2/families/${space.attributes.family_id}`, "get");
+                const { data: family } = yield pawClient.execute(`/api/d2/families/${space.attributes.family_id}`, "get", { config: { timeout: 0 } });
                 type = family && family.attributes && family.attributes.title;
+            }
+            // On récupères les douments PaW de ce sous-espace (chaque document PaW correspondant
+            // à un pièce flexicapture)
+            const documents = yield pawClient.getDocs({ space_ids: [space.id] });
+            if (!documents.length || !documents.filter(doc => doc.attributes.file_url).length) {
+                console.log(`this document is empty`);
+                yield pawClient.execute(`/api/d2/spaces/${spaceId}`, "patch", { config: { timeout: 0 } }, {
+                    data: { attributes: { superfields: Object.assign({}, space.attributes.superfields, { flexicapture: "pieces_non_conformes" }) } }
+                });
+                return;
             }
             // On créé un nouveau document flexicapture avec les propriétés nécessaires à son traitement
             const flexicaptureDocument = new client_1.default.Document({
@@ -44,30 +54,41 @@ function main() {
                     { Name: "kyc_type", Value: type },
                 ]
             });
-            // On récupères les douments PaW de ce sous-espace (chaque document PaW correspondant
-            // à un pièce flexicapture)
-            const documents = yield pawClient.getDocs({ space_ids: [space.id] });
+            // On ajoute le document à flexicapture
+            // /!\ Le paramètre excludeFromAutomaticAssembling est nécessaire au bon enregistrement des propriétés du document sur flexicapture
+            const { documentId } = yield flexicaptureClient.call("AddNewDocument", {
+                sessionId,
+                document: flexicaptureDocument,
+                file: new client_1.default.File({ Name: null, Bytes: null }),
+                previousItemId: 0,
+                excludeFromAutomaticAssembling: true
+            });
             // Pour chaque document
-            yield Promise.all(documents.map((doc) => __awaiter(this, void 0, void 0, function* () {
-                // On ajoute le document à flexiapture
-                // /!\ Le paramètre excludeFromAutomaticAssembling est nécessaire au bon enregistrement des propriétés du document sur flexicapture
-                const { documentId } = yield flexicaptureClient.call("AddNewDocument", { sessionId, document: flexicaptureDocument, previousItemId: 0, excludeFromAutomaticAssembling: true });
-                // Pour chaque page de ce document
-                yield Promise.all(doc.attributes.pages_urls.map((page_url, index) => __awaiter(this, void 0, void 0, function* () {
-                    // On récupère le contenu de la page que l'on enregistre dans un buffer
-                    const data = yield pawClient.execute(page_url, "get", { responseType: 'arraybuffer' });
-                    const buffer = Buffer.from(data, 'binary').toString('base64');
-                    // @ts-ignore - On créé un nouveau fichier flexicapture avec le buffer créé précédemment
-                    const file = new client_1.default.File({ Name: `${doc.id}_page${index + 1}`, Bytes: buffer });
+            yield documents.reduce((promise, doc, index) => __awaiter(this, void 0, void 0, function* () {
+                yield promise;
+                if (doc.attributes.file_url) {
                     try {
-                        yield flexicaptureClient.call("AddNewPage", { sessionId, batchId, documentId, file });
+                        // On récupère le contenu du fichier que l'on enregistre dans un buffer
+                        let data;
+                        try {
+                            data = yield pawClient.execute(doc.attributes.file_url, "get", { responseType: 'arraybuffer', config: { timeout: 0 } });
+                        }
+                        catch (_a) {
+                            data = yield pawClient.execute(doc.attributes.file_url, "get", { responseType: 'arraybuffer', config: { timeout: 0 } });
+                        }
+                        const buffer = Buffer.from(data, 'binary').toString('base64');
+                        // @ts-ignore - On créé un nouveau fichier flexicapture avec le buffer créé précédemment
+                        const file = new client_1.default.File({ Name: `${doc.id}_page${index + 1}`, Bytes: buffer });
+                        // @ts-ignore
+                        const page = new client_1.default.Page({ SourcePageNumber: index + 1 });
+                        yield flexicaptureClient.call("AddNewPage", { sessionId, batchId, documentId, file, previousItemId: 0, page });
+                        console.log(`added new file on batch ${batchId}`);
                     }
                     catch (e) {
-                        console.log(e.response.data);
+                        console.log(`error adding file from document ${doc.id}`);
                     }
-                    console.log(`added new image on batch ${batchId}`);
-                })));
-            })));
+                }
+            }), Promise.resolve());
             // Le document a été traité
             console.log(`paw document ${space.id} processed`);
             return true;
@@ -77,7 +98,7 @@ function main() {
         */
         const _processSpace = (spaceId) => __awaiter(this, void 0, void 0, function* () {
             // on récupère les informations sur l'espace
-            const { data: space } = yield pawClient.execute(`/api/d2/spaces/${spaceId}`, "get");
+            const { data: space } = yield pawClient.execute(`/api/d2/spaces/${spaceId}`, "get", { config: { timeout: 0 } });
             // on vérifie si l'espace a déjà été traité par ce script,
             // si c'est le cas, on stoppe l'exécution de cet espace
             if (processed.includes(space.id) || space.attributes.superfields.flexicaptureProcessed) {
@@ -86,10 +107,6 @@ function main() {
             }
             else {
                 processed.push(space.id);
-                // Sinon, on patch l'espace pour indiquer qu'il a déjà été traité
-                yield pawClient.execute(`/api/d2/spaces/${spaceId}`, "patch", {}, {
-                    data: { attributes: { superfields: Object.assign({}, space.attributes.superfields, { flexicaptureProcessed: true }) } }
-                });
             }
             // si cet espace n'a pas de sous-espaces (correspondants aux documents flexicapture),
             // on stoppe l'exécution de la fonction
@@ -123,17 +140,20 @@ function main() {
             try {
                 yield flexicaptureClient.call("OpenBatch", { sessionId, batchId });
             }
-            catch (_a) {
+            catch (_b) {
                 console.log("error opening batch");
             }
             console.log(`batch ${batchId} opened`);
             console.log(`${space.attributes.space_ids.length} paw document found`);
             // Pour chaque sous-espace de cet espace (c.a.d chaque document du dossier courant)
-            yield space.attributes.space_ids.reduce((promise, space_id) => __awaiter(this, void 0, void 0, function* () {
-                yield promise;
-                // on traite le document
-                yield _processDocument(sessionId, batchId, space_id);
-            }), Promise.resolve());
+            yield Promise.all(space.attributes.space_ids.map((space_id) => __awaiter(this, void 0, void 0, function* () {
+                try {
+                    yield _processDocument(sessionId, batchId, space_id);
+                }
+                catch (e) {
+                    console.log(`error processing document ${space_id}`, e);
+                }
+            })));
             // On ferme le batch (nécessaire à son traitement) et on lance son exécution
             yield flexicaptureClient.call("CloseBatch", { sessionId, batchId });
             console.log(`batch ${batchId} closed`);
@@ -142,6 +162,10 @@ function main() {
             // On ferme le projet et la session
             yield flexicaptureClient.call("CloseProject", { sessionId, projectId });
             yield flexicaptureClient.call("CloseSession", { sessionId });
+            // Sinon, on patch l'espace pour indiquer qu'il a déjà été traité
+            yield pawClient.execute(`/api/d2/spaces/${spaceId}`, "patch", { config: { timeout: 0 } }, {
+                data: { attributes: { superfields: Object.assign({}, space.attributes.superfields, { flexicaptureProcessed: true }) } }
+            });
             console.log(`end space ${spaceId}`);
             // On réaffiche le message d'attente
             console.log("waiting for new space to process ...");
@@ -174,13 +198,18 @@ function main() {
             // connexion à PaW
             yield pawClient.login();
             // on récupère l'espace concerné par la notification recue sur le channel
-            const { data: { attributes: { action: space_id } } } = yield pawClient.execute(`/api/d2/logs/${log_id}`, "get");
+            const { data: { attributes: { action: space_id } } } = yield pawClient.execute(`/api/d2/logs/${log_id}`, "get", { config: { timeout: 0 } });
             if (!space_id) {
                 console.log("space_id not found in action");
                 return;
             }
             // on traite l'espace (dossier flexicapture)
-            _processSpace(space_id);
+            try {
+                yield _processSpace(space_id);
+            }
+            catch (e) {
+                console.log(`error processing space ${e}`, e);
+            }
         }));
     });
 }

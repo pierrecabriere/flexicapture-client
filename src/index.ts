@@ -18,13 +18,27 @@ async function main() {
   */
   const _processDocument = async (sessionId, batchId, spaceId) => {
     // On récupère les informations sur le document
-    const { data: space } = await pawClient.execute(`/api/d2/spaces/${ spaceId }`, "get");
+    const { data: space } = await pawClient.execute(`/api/d2/spaces/${ spaceId }`, "get", { config: { timeout: 0 } });
     console.log(`process paw document ${ space.id }`);
     let type;
     if (space && space.attributes && space.attributes.family_id) {
       // On récupère le type de document (stocké dans la famille de celui-ci)
-      const { data: family } = await pawClient.execute(`/api/d2/families/${ space.attributes.family_id }`, "get");
+      const { data: family } = await pawClient.execute(`/api/d2/families/${ space.attributes.family_id }`, "get", { config: { timeout: 0 } });
       type = family && family.attributes && family.attributes.title;
+    }
+
+    // On récupères les douments PaW de ce sous-espace (chaque document PaW correspondant
+    // à un pièce flexicapture)
+    const documents = await pawClient.getDocs({ space_ids: [space.id] });
+
+    if (!documents.length || !documents.filter(doc => doc.attributes.file_url && doc.attributes.preview_url).length) {
+      console.log(`this document is not valid`);
+
+      await pawClient.execute(`/api/d2/spaces/${ spaceId }`, "patch", { config: { timeout: 0 } }, {
+        data: { attributes: { superfields: { ...space.attributes.superfields, flexicapture: "pieces_non_conformes" } } }
+      });
+
+      return;
     }
 
     // On créé un nouveau document flexicapture avec les propriétés nécessaires à son traitement
@@ -36,30 +50,46 @@ async function main() {
       ]
     });
 
-    // On récupères les douments PaW de ce sous-espace (chaque document PaW correspondant
-    // à un pièce flexicapture)
-    const documents = await pawClient.getDocs({ space_ids: [space.id] });
-    // Pour chaque document
-    await Promise.all(documents.map(async doc => {
-      // On ajoute le document à flexiapture
-      // /!\ Le paramètre excludeFromAutomaticAssembling est nécessaire au bon enregistrement des propriétés du document sur flexicapture
-      const { documentId } = await flexicaptureClient.call("AddNewDocument", { sessionId, document: flexicaptureDocument, previousItemId: 0, excludeFromAutomaticAssembling: true });
+    // On ajoute le document à flexicapture
+    // /!\ Le paramètre excludeFromAutomaticAssembling est nécessaire au bon enregistrement des propriétés du document sur flexicapture
+    const { documentId } = await flexicaptureClient.call("AddNewDocument", {
+      sessionId,
+      document: flexicaptureDocument,
+      file: new FlexicaptureClient.File({ Name: null, Bytes: null }),
+      previousItemId: 0,
+      excludeFromAutomaticAssembling: true
+    });
 
-      // Pour chaque page de ce document
-      await Promise.all(doc.attributes.pages_urls.map(async (page_url, index) => {
-        // On récupère le contenu de la page que l'on enregistre dans un buffer
-        const data = await pawClient.execute(page_url, "get", { responseType: 'arraybuffer' });
-        const buffer = Buffer.from(data, 'binary').toString('base64');
-        // @ts-ignore - On créé un nouveau fichier flexicapture avec le buffer créé précédemment
-        const file = new FlexicaptureClient.File({ Name: `${ doc.id }_page${ index + 1 }`, Bytes: buffer });
+    // Pour chaque document
+    await documents.reduce(async (promise, doc, index) => {
+      await promise;
+
+      if (doc.attributes.file_url) {
         try {
-          await flexicaptureClient.call("AddNewPage", { sessionId, batchId, documentId, file });
+          // On récupère le contenu du fichier que l'on enregistre dans un buffer
+          let data;
+          try {
+            data = await pawClient.execute(doc.attributes.file_url, "get", { responseType: 'arraybuffer', config: { timeout: 0 } });
+          } catch {
+            data = await pawClient.execute(doc.attributes.file_url, "get", { responseType: 'arraybuffer', config: { timeout: 0 } });
+          }
+
+          const buffer = Buffer.from(data, 'binary').toString('base64');
+
+          // @ts-ignore - On créé un nouveau fichier flexicapture avec le buffer créé précédemment
+          const file = new FlexicaptureClient.File({ Name: `${ doc.id }_page${ index + 1 }`, Bytes: buffer });
+
+          // @ts-ignore
+          const page = new FlexicaptureClient.Page({ SourcePageNumber: index + 1 });
+
+          await flexicaptureClient.call("AddNewPage", { sessionId, batchId, documentId, file, previousItemId: 0, page });
+
+          console.log(`added new file on batch ${ batchId }`);
         } catch (e) {
-          console.log(e.response.data);
+          console.log(`error adding file from document ${doc.id}`);
         }
-        console.log(`added new image on batch ${ batchId }`);
-      }));
-    }));
+      }
+    }, Promise.resolve());
 
     // Le document a été traité
     console.log(`paw document ${ space.id } processed`);
@@ -72,7 +102,7 @@ async function main() {
   const _processSpace = async spaceId => {
 
     // on récupère les informations sur l'espace
-    const { data: space } = await pawClient.execute(`/api/d2/spaces/${ spaceId }`, "get");
+    const { data: space } = await pawClient.execute(`/api/d2/spaces/${ spaceId }`, "get", { config: { timeout: 0 } });
     // on vérifie si l'espace a déjà été traité par ce script,
     // si c'est le cas, on stoppe l'exécution de cet espace
     if (processed.includes(space.id) || space.attributes.superfields.flexicaptureProcessed) {
@@ -80,10 +110,6 @@ async function main() {
       return;
     } else {
       processed.push(space.id);
-      // Sinon, on patch l'espace pour indiquer qu'il a déjà été traité
-      await pawClient.execute(`/api/d2/spaces/${ spaceId }`, "patch", {}, {
-        data: { attributes: { superfields: { ...space.attributes.superfields, flexicaptureProcessed: true } } }
-      });
     }
     // si cet espace n'a pas de sous-espaces (correspondants aux documents flexicapture),
     // on stoppe l'exécution de la fonction
@@ -129,13 +155,16 @@ async function main() {
 
     console.log(`${ space.attributes.space_ids.length } paw document found`);
 
+    let spaceProcessed = false;
     // Pour chaque sous-espace de cet espace (c.a.d chaque document du dossier courant)
-    await space.attributes.space_ids.reduce(async (promise, space_id) => {
-      await promise;
-
-      // on traite le document
-      await _processDocument(sessionId, batchId, space_id);
-    }, Promise.resolve());
+    await Promise.all(space.attributes.space_ids.map(async space_id => {
+      try {
+        await _processDocument(sessionId, batchId, space_id);
+        spaceProcessed = true;
+      } catch (e) {
+        console.log(`error processing document ${ space_id }`, e);
+      }
+    }));
 
     // On ferme le batch (nécessaire à son traitement) et on lance son exécution
     await flexicaptureClient.call("CloseBatch", { sessionId, batchId });
@@ -146,6 +175,11 @@ async function main() {
     // On ferme le projet et la session
     await flexicaptureClient.call("CloseProject", { sessionId, projectId });
     await flexicaptureClient.call("CloseSession", { sessionId });
+
+    // Sinon, on patch l'espace pour indiquer qu'il a déjà été traité
+    await pawClient.execute(`/api/d2/spaces/${ spaceId }`, "patch", { config: { timeout: 0 } }, {
+      data: { attributes: { superfields: { ...space.attributes.superfields, flexicaptureProcessed: true } } }
+    });
 
     console.log(`end space ${ spaceId }`);
 
@@ -187,7 +221,7 @@ async function main() {
     await pawClient.login();
 
     // on récupère l'espace concerné par la notification recue sur le channel
-    const { data: { attributes: { action: space_id } } } = await pawClient.execute(`/api/d2/logs/${ log_id }`, "get");
+    const { data: { attributes: { action: space_id } } } = await pawClient.execute(`/api/d2/logs/${ log_id }`, "get", { config: { timeout: 0 } });
 
     if (!space_id) {
       console.log("space_id not found in action");
@@ -195,7 +229,11 @@ async function main() {
     }
 
     // on traite l'espace (dossier flexicapture)
-    _processSpace(space_id);
+    try {
+      await _processSpace(space_id);
+    } catch (e) {
+      console.log(`error processing space ${ e }`, e)
+    }
   });
 }
 

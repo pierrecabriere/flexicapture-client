@@ -1,3 +1,4 @@
+import Page from "./models/Page";
 import axios from "axios";
 import Batch from "./models/Batch";
 import Document from "./models/Document";
@@ -24,6 +25,7 @@ class FlexicaptureClient {
   static Batch = Batch;
   static Document = Document;
   static File = File;
+  static Page = Page;
 
   // constructor
 
@@ -54,4 +56,4 @@ class FlexicaptureClient {
 }
 
 export default FlexicaptureClient;
-export { FlexicaptureClient, Batch, Document, File };
+export { FlexicaptureClient, Batch, Document, File, Page };

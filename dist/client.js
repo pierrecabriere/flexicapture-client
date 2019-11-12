@@ -11,6 +11,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const Page_1 = __importDefault(require("./models/Page"));
+exports.Page = Page_1.default;
 const axios_1 = __importDefault(require("axios"));
 const Batch_1 = __importDefault(require("./models/Batch"));
 exports.Batch = Batch_1.default;
@@ -52,5 +54,6 @@ class FlexicaptureClient {
 FlexicaptureClient.Batch = Batch_1.default;
 FlexicaptureClient.Document = Document_1.default;
 FlexicaptureClient.File = File_1.default;
+FlexicaptureClient.Page = Page_1.default;
 exports.FlexicaptureClient = FlexicaptureClient;
 exports.default = FlexicaptureClient;

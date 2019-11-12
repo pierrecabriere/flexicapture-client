@@ -31,7 +31,7 @@ async function main() {
     // à un pièce flexicapture)
     const documents = await pawClient.getDocs({ space_ids: [space.id] });
 
-    if (!documents.length || !documents.filter(doc => doc.attributes.file_url && doc.attributes.content_type.includes("image")).length) {
+    if (!documents.length || !documents.filter(doc => doc.attributes.file_url && (doc.attributes.content_type.includes("image") || doc.attributes.content_type.includes("pdf"))).length) {
       console.log(`this document is not valid`);
 
       await pawClient.execute(`/api/d2/spaces/${ spaceId }`, "patch", { config: { timeout: 0 } }, {
@@ -125,8 +125,8 @@ async function main() {
     const projectGuid = projectsMapping[type] || process.env.FLEXICAPTURE_PROJECT_GUID;
 
     // On se connecte à flexicapture pour récupérer une session et ouvrir le projet configuré dans le .env
-    const { userIdentity } = await flexicaptureClient.call("GetCurrentUserIdentity");
-    const { userId } = await flexicaptureClient.call("FindUser", { userLogin: userIdentity.Name });
+    // const { userIdentity } = await flexicaptureClient.call("GetCurrentUserIdentity");
+    // const { userId } = await flexicaptureClient.call("FindUser", { userLogin: userIdentity.Name });
     const { sessionId } = await flexicaptureClient.call("OpenSession", { roleType: 1, stationType: 1 });
     const { projectId } = await flexicaptureClient.call("OpenProject", {
       sessionId,
@@ -144,7 +144,7 @@ async function main() {
       ]
     });
 
-    const { batchId } = await flexicaptureClient.call("AddNewBatch", { sessionId, projectId, batch, ownerId: userId });
+    const { batchId } = await flexicaptureClient.call("AddNewBatch", { sessionId, projectId, batch, ownerId: 0 });
     console.log(`batch ${ batchId } created for space ${ spaceId }`);
     try {
       await flexicaptureClient.call("OpenBatch", { sessionId, batchId });

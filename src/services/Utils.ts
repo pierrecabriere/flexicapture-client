@@ -134,7 +134,7 @@ class Utils {
     // si cet espace n'a pas de sous-espaces (correspondants aux documents flexicapture),
     // on stoppe l'exécution de la fonction
     if (!space || !space.attributes || !space.attributes.space_ids) {
-      Logger.info(`[${ new Date() }] no documents found`);
+      Logger.info(`[${ new Date() }] no documents found for space ${ space.id }`);
       return;
     }
 

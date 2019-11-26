@@ -1,4 +1,5 @@
 import { PDFDocument } from "pdf-lib";
+import FlexicaptureClient from "../client";
 import Clients from "./Clients";
 import Logger from "./Logger";
 
@@ -197,9 +198,9 @@ class Utils {
     await Clients.flexicapture.call("CloseSession", { sessionId });
 
     // Sinon, on patch l'espace pour indiquer qu'il a déjà été traité
-    await Clients.paw.execute(`/api/d1/spaces/${ spaceId }`, "patch", { config: { timeout: 0 } }, {
-      data: { attributes: { superfields: { flexicaptureProcessed: true } } }
-    });
+    // await Clients.paw.execute(`/api/d2/spaces/${ spaceId }`, "patch", { config: { timeout: 0 } }, {
+    //   data: { attributes: { superfields: { flexicaptureProcessed: true } } }
+    // });
 
     Logger.info(`[${ new Date() }] end space ${ spaceId }`);
 

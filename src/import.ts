@@ -57,13 +57,15 @@ async function main() {
   // @ts-ignore
   const pages = parseInt(meta.pagination.total_objects / pageSize) - 1;
 
-  await Array(pages).fill(0).reduce(async (promise, _, page) => {
-    await promise;
-    await Clients.paw.login();
+  if (pages > 1) {
+    await Array(pages).fill(0).reduce(async (promise, _, page) => {
+      await promise;
+      await Clients.paw.login();
 
-    const { data } = await Clients.paw.execute(`/api/d2/spaces`, "get", {}, { ...query, per_page: pageSize, page: page + 2 });
-    await processPage(data, page + 2);
-  }, Promise.resolve());
+      const { data } = await Clients.paw.execute(`/api/d2/spaces`, "get", {}, { ...query, per_page: pageSize, page: page + 2 });
+      await processPage(data, page + 2);
+    }, Promise.resolve());
+  }
   console.log("end import");
 }
 

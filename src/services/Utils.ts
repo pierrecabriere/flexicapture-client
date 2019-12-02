@@ -99,20 +99,25 @@ class Utils {
               });
             }
           } else {
-            const buffer = Buffer.from(data, 'binary').toString('base64');
+            try {
+              const buffer = Buffer.from(data, 'binary').toString('base64');
 
-            // @ts-ignore - On créé un nouveau fichier flexicapture avec le buffer créé précédemment
-            const file = new FlexicaptureClient.File({ Name: `${ doc.id }_page${ pageIndex }`, Bytes: buffer });
+              // @ts-ignore - On créé un nouveau fichier flexicapture avec le buffer créé précédemment
+              const file = new FlexicaptureClient.File({ Name: `${ doc.id }_page${ pageIndex }`, Bytes: buffer });
 
-            // @ts-ignore
-            const page = new FlexicaptureClient.Page({ SourcePageNumber: pageIndex });
+              // @ts-ignore
+              const page = new FlexicaptureClient.Page({ SourcePageNumber: pageIndex });
 
-            await Clients.flexicapture.call("AddNewPage", { sessionId, batchId, documentId, file, previousItemId: -1, page });
+              await Clients.flexicapture.call("AddNewPage", { sessionId, batchId, documentId, file, previousItemId: -1, page });
+
+              Logger.info(`[${ new Date() }] added new file on batch ${ batchId }`);
+            } catch {
+              Logger.error(`[${ new Date() }] Problem adding file on batch ${ batchId }`);
+            }
 
             pageIndex++;
           }
 
-          Logger.info(`[${ new Date() }] added new file on batch ${ batchId }`);
         } catch (e) {
           Logger.error(`[${ new Date() }] error adding file from document ${ doc.id }`);
         }

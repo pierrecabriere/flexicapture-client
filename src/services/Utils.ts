@@ -4,6 +4,12 @@ import FlexicaptureClient from "../client";
 import Clients from "./Clients";
 import Logger from "./Logger";
 
+const projectsMapping = {
+  "kyc_als_hestia_sub1_beneficiaire": "56c35116-0b93-4a87-8e51-19d28c9cbdba",
+  "kyc_mj": "48968721-755e-4125-8564-b8f267ae14c5",
+  "kyc_als_hestia_amo": "137defae-5f3d-4a42-93c2-381116d0b63b"
+};
+
 class Utils {
   /*
   Fonction de traitement d'un sous-espace de travail plugandwork (document flexicapture)
@@ -133,7 +139,7 @@ class Utils {
   /*
   Fonction de traitement d'un espace de travail plugandwork (dossier flexicapture).
   */
-  static async processSpace({ spaceId, projectsMapping }) {
+  static async processSpace({ spaceId }) {
     await Database.initialize();
 
     if (await Database.isProcessed(spaceId)) {
@@ -182,6 +188,7 @@ class Utils {
       await Clients.flexicapture.call("OpenBatch", { sessionId, batchId });
     } catch {
       Logger.error(`[${ new Date() }] error opening batch`);
+      return;
     }
     Logger.info(`[${ new Date() }] batch ${ batchId } opened`);
 
@@ -200,16 +207,18 @@ class Utils {
       }
     }));
 
+    // On ferme le batch (nécessaire à son traitement) et on lance son exécution
+    await Clients.flexicapture.call("CloseBatch", { sessionId, batchId });
+    Logger.info(`[${ new Date() }] batch ${ batchId } closed`);
+
     if (!processed) {
       Logger.info(`[${ new Date() }] no document processed - setting status "traitement_en_cours"`);
       await Clients.paw.execute(`/api/d2/spaces/${ spaceId }`, "patch", { config: { timeout: 0 } }, {
         data: { attributes: { superfields: { ...space.attributes.superfields, status: "traitement_en_cours" } } }
       });
+      return;
     }
 
-    // On ferme le batch (nécessaire à son traitement) et on lance son exécution
-    await Clients.flexicapture.call("CloseBatch", { sessionId, batchId });
-    Logger.info(`[${ new Date() }] batch ${ batchId } closed`);
     await Clients.flexicapture.call("ProcessBatch", { sessionId, batchId });
     Logger.info(`[${ new Date() }] batch ${ batchId } created`);
 
@@ -225,6 +234,37 @@ class Utils {
     // On réaffiche le message d'attente
     Logger.info(`[${ new Date() }] waiting for new space to process ...`);
   };
+
+  private static async processPage(spaces, page) {
+    console.log(`Processing page ${ page }`);
+    await spaces.reduce(async (promise, space) => {
+      await promise;
+
+      await Utils.processSpace({
+        spaceId: space.id
+      });
+    }, Promise.resolve());
+  }
+
+  static async import({ query, pageSize = 100 }) {
+    await Clients.paw.login();
+    const { data, meta } = await Clients.paw.execute(`/api/d2/spaces`, "get", {}, { ...query, per_page: pageSize, page: 1 });
+    console.log(`${ meta.pagination.total_objects } spaces found for query ${ JSON.stringify(query) }`);
+    await this.processPage(data, 1);
+    // @ts-ignore
+    const pages = parseInt(meta.pagination.total_objects / pageSize) - 1;
+
+    if (pages > 1) {
+      await Array(pages).fill(0).reduce(async (promise, _, page) => {
+        await promise;
+        await Clients.paw.login();
+
+        const { data } = await Clients.paw.execute(`/api/d2/spaces`, "get", {}, { ...query, per_page: pageSize, page: page + 2 });
+        await this.processPage(data, page + 2);
+      }, Promise.resolve());
+    }
+    console.log("end import");
+  }
 }
 
 export default Utils;

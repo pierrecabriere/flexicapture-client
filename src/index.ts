@@ -32,12 +32,7 @@ async function main() {
       // on vérifie si l'espace a déjà été traité par ce script,
       // si c'est le cas, on stoppe l'exécution de cet espace
       await Utils.processSpace({
-        spaceId: space_id,
-        projectsMapping: {
-          "kyc_als_hestia_sub1_beneficiaire": "56c35116-0b93-4a87-8e51-19d28c9cbdba",
-          "kyc_mj": "48968721-755e-4125-8564-b8f267ae14c5",
-          "kyc_als_hestia_amo": "137defae-5f3d-4a42-93c2-381116d0b63b"
-        }
+        spaceId: space_id
       });
     } catch (e) {
       Logger.error(`[${ new Date() }] error processing space ${ e }`, e)

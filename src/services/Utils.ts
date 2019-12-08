@@ -1,3 +1,4 @@
+import Database from "./Database";
 import { PDFDocument } from "pdf-lib";
 import FlexicaptureClient from "../client";
 import Clients from "./Clients";
@@ -112,7 +113,7 @@ class Utils {
 
               Logger.info(`[${ new Date() }] added new file on batch ${ batchId }`);
             } catch {
-              Logger.error(`[${ new Date() }] Problem adding file on batch ${ batchId }`);
+              Logger.error(`[${ new Date() }] Problem adding file on batch ${ batchId } - document ${ documentId }`);
             }
 
             pageIndex++;
@@ -133,6 +134,11 @@ class Utils {
   Fonction de traitement d'un espace de travail plugandwork (dossier flexicapture).
   */
   static async processSpace({ spaceId, projectsMapping }) {
+    await Database.initialize();
+
+    if (await Database.isProcessed(spaceId)) {
+      Logger.info(`[${ new Date() }] space ${ spaceId } already processed`);
+    }
 
     // on récupère les informations sur l'espace
     const { data: space } = await Clients.paw.execute(`/api/d2/spaces/${ spaceId }`, "get", { config: { timeout: 0 } });
@@ -182,15 +188,24 @@ class Utils {
     Logger.info(`[${ new Date() }] ${ space.attributes.space_ids.length } paw document found`);
 
     let spaceProcessed = false;
+    let processed = 0;
     // Pour chaque sous-espace de cet espace (c.a.d chaque document du dossier courant)
     await Promise.all(space.attributes.space_ids.map(async space_id => {
       try {
         await Utils.processDocument({ sessionId, batchId, spaceId: space_id });
         spaceProcessed = true;
+        processed++;
       } catch (e) {
         Logger.info(`[${ new Date() }] error processing document ${ space_id }`, e);
       }
     }));
+
+    if (!processed) {
+      Logger.info(`[${ new Date() }] no document processed - setting status "traitement_en_cours"`);
+      await Clients.paw.execute(`/api/d2/spaces/${ spaceId }`, "patch", { config: { timeout: 0 } }, {
+        data: { attributes: { superfields: { ...space.attributes.superfields, status: "traitement_en_cours" } } }
+      });
+    }
 
     // On ferme le batch (nécessaire à son traitement) et on lance son exécution
     await Clients.flexicapture.call("CloseBatch", { sessionId, batchId });
@@ -203,9 +218,7 @@ class Utils {
     await Clients.flexicapture.call("CloseSession", { sessionId });
 
     // Sinon, on patch l'espace pour indiquer qu'il a déjà été traité
-    // await Clients.paw.execute(`/api/d2/spaces/${ spaceId }`, "patch", { config: { timeout: 0 } }, {
-    //   data: { attributes: { superfields: { flexicaptureProcessed: true } } }
-    // });
+    await Database.processed(spaceId);
 
     Logger.info(`[${ new Date() }] end space ${ spaceId }`);
 

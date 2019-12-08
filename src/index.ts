@@ -5,9 +5,6 @@ import Utils from "./services/Utils";
 import Logger from "./services/Logger";
 
 async function main() {
-  // liste des espaces tratés (cache)
-  const processed = [];
-
   // quand le socket est connecté ...
   Clients.faye.on('transport:up', function () {
     Logger.info(`[${ new Date() }] waiting for new space to process ...`);
@@ -34,13 +31,6 @@ async function main() {
     try {
       // on vérifie si l'espace a déjà été traité par ce script,
       // si c'est le cas, on stoppe l'exécution de cet espace
-      //if (processed.includes(space.id) || space.attributes.superfields.flexicaptureProcessed) {
-      //  Logger.info(`[${ new Date() }] the script already processed this document`);
-      //  return;
-      //} else {
-      processed.push(space_id);
-      //}
-
       await Utils.processSpace({
         spaceId: space_id,
         projectsMapping: {

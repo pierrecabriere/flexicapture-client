@@ -3,14 +3,22 @@ require('dotenv').config();
 import Clients from "./services/Clients";
 import Utils from "./services/Utils";
 
-// MJ
+// TEST
 const query = {
-  "family_id": "5ced18a1b289d537b6b71051",
-  "responsible": "5d7ce507b289d507b8bee703",
+  "family_id": "5da47e13b289d504a18db395",
   "superfields.status": "pret_pour_saisie",
   "percent_min": 10,
   "percent_max": 10
 };
+
+// MJ
+// const query = {
+//   "family_id": "5ced18a1b289d537b6b71051",
+//   "responsible": "5d7cdf77b289d507adbeeba2",
+//   "superfields.status": "pret_pour_saisie",
+//   "percent_min": 10,
+//   "percent_max": 10
+// };
 
 // AMO
 // const query = {
@@ -21,7 +29,7 @@ const query = {
 //   "percent_max": 10
 // };
 
-// MJ
+// SUB1
 // const query = {
 //   "family_id": "5d4055b3b289d564eadbe69c",
 //   "responsible": "5d7cdf77b289d507adbeeba2",
@@ -38,7 +46,7 @@ const projectsMapping = {
 };
 
 async function processPage(spaces, page) {
-  console.log(`Processing page ${page}`);
+  console.log(`Processing page ${ page }`);
   await spaces.reduce(async (promise, space) => {
     await promise;
 

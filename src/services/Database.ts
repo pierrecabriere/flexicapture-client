@@ -1,4 +1,4 @@
-const Sequelize = require('sequelize');
+const Sequelize = require("sequelize");
 
 class Database {
   static _model;
@@ -8,7 +8,7 @@ class Database {
     this._sequelize = this._sequelize || new Sequelize({
       dialect: 'sqlite',
       storage: 'database.sqlite'
-    }, { logging: false });
+    });
 
     return this._sequelize;
   }

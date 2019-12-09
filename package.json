@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
-    "import": "node dist/imports.js",
+    "import": "node dist/import.js",
     "cron": "node dist/cron.js",
     "build": "tsc"
   },

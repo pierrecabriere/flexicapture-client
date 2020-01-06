@@ -198,7 +198,8 @@ class Utils {
     let spaceProcessed = false;
     let processed = 0;
     // Pour chaque sous-espace de cet espace (c.a.d chaque document du dossier courant)
-    await Promise.all(space.attributes.space_ids.map(async space_id => {
+    const children = space.attributes.superfields._children || space.attributes.space_ids;
+    await Promise.all(children.map(async space_id => {
       try {
         await Utils.processDocument({ sessionId, batchId, spaceId: space_id });
         spaceProcessed = true;

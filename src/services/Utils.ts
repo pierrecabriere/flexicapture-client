@@ -34,11 +34,13 @@ class Utils {
 
       // const invalidfiles = documents.filter(doc => !doc.attributes.file_url || (!doc.attributes.content_type.includes("image") && !doc.attributes.content_type.includes("pdf") && !doc.attributes.preview_url))
       // console.log(invalidfiles);
-      await Clients.paw.execute(`/api/d2/spaces/${ spaceId }`, "patch", { config: { timeout: 0 } }, {
-        data: { attributes: { superfields: { ...space.attributes.superfields, flexicapture: "pieces_non_conformes" } } }
-      });
+      try {
+        await Clients.paw.execute(`/api/d2/spaces/${ spaceId }`, "patch", { config: { timeout: 0 } }, {
+          data: { attributes: { superfields: { ...space.attributes.superfields, flexicapture: "pieces_non_conformes" } } }
+        });
+      } catch (e) {}
 
-      return;
+      throw new Error();
     }
 
     // On créé un nouveau document flexicapture avec les propriétés nécessaires à son traitement

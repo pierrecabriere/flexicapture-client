@@ -144,6 +144,7 @@ class Utils {
 
     if (await Database.isProcessed(spaceId)) {
       Logger.info(`[${ new Date() }] space ${ spaceId } already processed`);
+      return;
     }
 
     // on récupère les informations sur l'espace

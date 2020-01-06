@@ -3,7 +3,6 @@ require('dotenv').config();
 import Utils from "./services/Utils";
 import fs from "fs";
 import path from "path";
-import { CronJob } from "cron";
 
 const mapFolderSync = (dir: string) => {
   let files = [];
@@ -23,7 +22,8 @@ const mapFolderSync = (dir: string) => {
 const controllersPath = path.resolve(__dirname, '../queries');
 const queries = mapFolderSync(controllersPath).filter(filePath => filePath.match(/\.json$/)).map(filePath => require(filePath));
 
-queries.forEach(query => {
-  new CronJob('00 00 6 * * *', () => Utils.import({ query })).start();
-  new CronJob('00 00 13 * * *', () => Utils.import({ query })).start();
-});
+queries.reduce(async (promise, query) => {
+  await promise;
+
+  return Utils.import({ query })
+}, Promise.resolve());
